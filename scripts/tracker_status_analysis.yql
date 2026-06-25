@@ -1,0 +1,32 @@
+-- Анализ времени нахождения задач в каждом статусе
+-- SPBACKEND и SPFRONT очереди
+
+-- Попробуем запросить данные трекера если они синхронизированы в YQL
+USE hahn;
+
+-- Вариант 1: Если трекер в //home/yandex_search/tracker/issues
+SELECT
+    issue_key,
+    queue,
+    status,
+    priority,
+    created_at,
+    updated_at,
+    CAST((updated_at - created_at) / 86400 AS INT) as days_in_status,
+    CASE
+        WHEN (updated_at - created_at) / 86400 < 1 THEN '< 1 дня'
+        WHEN (updated_at - created_at) / 86400 < 3 THEN '1-3 дня'
+        WHEN (updated_at - created_at) / 86400 < 7 THEN '3-7 дней'
+        WHEN (updated_at - created_at) / 86400 < 14 THEN '1-2 недели'
+        WHEN (updated_at - created_at) / 86400 < 30 THEN '2-4 недели'
+        ELSE '> 1 месяца'
+    END as duration_bucket
+FROM
+    //home/tracker/issues
+WHERE
+    queue IN ('SPBACKEND', 'SPFRONT')
+    AND created_at IS NOT NULL
+    AND updated_at IS NOT NULL
+ORDER BY
+    queue, status, days_in_status DESC
+LIMIT 100000;
